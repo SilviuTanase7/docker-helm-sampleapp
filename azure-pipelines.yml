@@ -39,3 +39,23 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+
+# Stage 2: Helm Deployment
+- stage: Deploy
+  dependsOn: Build
+  jobs:
+  - job: HelmDeploy
+    pool:
+      name: Default
+    steps:
+    - task: HelmInstaller@1
+      inputs:
+        helmVersionToInstall: 'latest'
+      displayName: 'Install Helm'
+    
+    - script: |
+        helm upgrade --install myapp ./charts/myapp \
+          --namespace mynamespace \
+          --set image.repository=myacr.azurecr.io/myapp \
+          --set image.tag=$(Build.BuildId)
+      displayName: 'Deploy Helm Chart'
