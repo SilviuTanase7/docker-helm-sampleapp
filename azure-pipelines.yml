@@ -10,9 +10,9 @@ resources:
 
 variables:
   # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: '6e376f56-6367-4af3-a493-2122a23ab743'
-  imageRepository: 'sampleapp'
-  containerRegistry: 'dockerhelm.azurecr.io'
+  #dockerRegistryServiceConnection: '6e376f56-6367-4af3-a493-2122a23ab743'
+  #imageRepository: 'sampleapp'
+  #containerRegistry: 'dockerhelm.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
 
