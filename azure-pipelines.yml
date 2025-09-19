@@ -57,8 +57,8 @@ stages:
     - script: |
         echo "Using Kubernetes context: $(KUBE_CONTEXT)"
         kubectl config use-context $(KUBE_CONTEXT)
-        helm upgrade --install myapp ./charts/myapp \
+        helm upgrade --install myapp ./charts/sampleapp \
           --namespace mynamespace \
-          --set image.repository=myacr.azurecr.io/myapp \
+          --set image.repository=dockerhelm.azurecr.io/sampleapp \
           --set image.tag=$(Build.BuildId)
       displayName: 'Deploy Helm Chart'
