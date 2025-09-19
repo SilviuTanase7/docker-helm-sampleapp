@@ -1,7 +1,7 @@
-{{- define "SampleApp.name" -}}
+{{- define "sampleapp.name" -}}
 {{ .Chart.Name | lower }}
 {{- end }}
 
-{{- define "SampleApp.fullname" -}}
-{{ include "SampleApp.name" . }}-{{ .Release.Name }}
+{{- define "sampleapp.fullname" -}}
+{{ include "sampleapp.name" . }}-{{ .Release.Name }}
 {{- end }}
