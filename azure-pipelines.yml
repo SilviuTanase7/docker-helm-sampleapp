@@ -43,22 +43,29 @@ stages:
 
 # Stage 2: Helm Deployment
 - stage: Deploy
+  displayName: "Deploy to Production"
   dependsOn: Build
   jobs:
-  - job: HelmDeploy
-    pool:
-      name: Default
-    steps:
-    - task: HelmInstaller@1
-      inputs:
-        helmVersionToInstall: 'latest'
-      displayName: 'Install Helm'
-    
-    - script: |
-        echo "Using Kubernetes context: $(KUBE_CONTEXT)"
-        kubectl config use-context $(KUBE_CONTEXT)
-        helm upgrade --install sampleapp ./charts/sampleapp \
-          --namespace mynamespace \
-          --set image.repository=dockerhelm.azurecr.io/sampleapp \
-          --set image.tag=$(Build.BuildId)
-      displayName: 'Deploy Helm Chart'
+    - deployment: HelmDeploy                 # 👈 must be 'deployment' instead of 'job'
+      displayName: "Helm Deploy"
+      environment: 'production'              # 👈 approvals/checks configured in Azure DevOps Environments
+      pool:
+        name: Default
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: HelmInstaller@1
+                inputs:
+                  helmVersionToInstall: 'latest'
+                displayName: 'Install Helm'
+              
+              - script: |
+                  echo "Using Kubernetes context: $(KUBE_CONTEXT)"
+                  kubectl config use-context $(KUBE_CONTEXT)
+                  helm upgrade --install sampleapp ./charts/sampleapp \
+                    --namespace mynamespace \
+                    --set image.repository=dockerhelm.azurecr.io/sampleapp \
+                    --set image.tag=$(Build.BuildId)
+                displayName: 'Deploy Helm Chart'
+
