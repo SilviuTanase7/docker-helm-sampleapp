@@ -40,6 +40,20 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+  # Job 2: Run tests in parallel
+  - job: RunTests
+    displayName: Run Unit Tests
+    pool:
+      name: Default
+      demands:
+        - agent.name -equals $(agentName)
+    steps:
+      - script: |
+          echo "Running lint..."
+          # Add your lint command here, e.g. npm run lint
+          echo "Running unit tests..."
+          # Add your test command here, e.g. npm test
+        displayName: Lint + Unit Tests
 
 # Stage 2: Helm Deployment
 - stage: Deploy
