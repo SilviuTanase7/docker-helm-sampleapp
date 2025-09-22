@@ -31,20 +31,6 @@ stages:
       demands: 
         - agent.name -equals $(agentName)
     steps:
-    # -----------------------------
-    # Cache Docker Layers
-    # -----------------------------
-    - task: Cache@2
-      inputs:
-        key: 'docker | "$(Agent.OS)" | $(Build.SourcesDirectory)/Dockerfile'
-        restoreKeys: |
-          docker | "$(Agent.OS)"
-        path: $(Pipeline.Workspace)/.docker
-      displayName: Cache Docker Layers
-
-    # -----------------------------
-    # Build and Push Docker Image
-    # -----------------------------
     - task: Docker@2
       displayName: Build and push an image to container registry
       inputs:
