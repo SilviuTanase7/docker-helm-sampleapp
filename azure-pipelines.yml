@@ -62,7 +62,7 @@ stages:
   jobs:
     - deployment: HelmDeploy                 # 👈 must be 'deployment' instead of 'job'
       displayName: "Helm Deploy"
-      environment: 'production'              # 👈 approvals/checks configured in Azure DevOps Environments
+      environment: 'staging'              # 👈 approvals/checks configured in Azure DevOps Environments
       pool:
         name: Default
       strategy:
