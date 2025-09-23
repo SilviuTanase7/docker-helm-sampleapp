@@ -21,6 +21,50 @@ variables:
   agentName: 'homeAgent'
 
 stages:
+- stage: CodeQuality
+  displayName: 'Code Quality Checks'
+  jobs:
+  - job: LintAndFormat
+    displayName: 'Run Linters and Formatters'
+    pool:
+      name: Default
+      demands:
+        - agent.name -equals $(agentName)
+    steps:
+    # -----------------------------
+    # Install .NET SDK if missing
+    # -----------------------------
+    - script: |
+        echo "Checking .NET SDK..."
+        dotnet --version || sudo apt-get update && sudo apt-get install -y dotnet-sdk-7.0
+      displayName: 'Install .NET SDK'
+
+    # -----------------------------
+    # Install dotnet-format
+    # -----------------------------
+    - script: |
+        dotnet tool install -g dotnet-format || echo "dotnet-format already installed"
+        echo "##vso[task.prependpath]$HOME/.dotnet/tools"
+      displayName: 'Install dotnet-format'
+
+    # -----------------------------
+    # Restore NuGet packages
+    # -----------------------------
+    - script: dotnet restore
+      displayName: 'Restore NuGet packages'
+
+    # -----------------------------
+    # Run code formatting check
+    # -----------------------------
+    - script: dotnet format --verify-no-changes
+      displayName: 'Check code formatting'
+
+    # -----------------------------
+    # Run analyzers check
+    # -----------------------------
+    - script: dotnet format analyzers --verify-no-changes
+      displayName: 'Run code analyzers'
+      
 - stage: Build
   displayName: Build and push stage
   jobs:
