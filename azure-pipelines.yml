@@ -56,6 +56,7 @@ stages:
         projectName: 'DockerHelm'
         extraProperties: |
           sonar.host.url=http://192.168.1.2:9000
+          sonar.login=$(SONARQUBE_TOKEN)
       
 - stage: Build
   displayName: Build and push stage
