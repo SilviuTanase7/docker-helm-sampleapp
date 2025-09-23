@@ -15,7 +15,7 @@ variables:
   #imageRepository: 'sampleapp'
   #containerRegistry: 'dockerhelm.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
-  tag: '$(Build.BuildId)'
+  tag: '$(Build.BuildId)' 
 
   # Agent VM image name
   agentName: 'homeAgent'
@@ -64,6 +64,13 @@ stages:
     # -----------------------------
     - script: dotnet format analyzers --verify-no-changes
       displayName: 'Run code analyzers'
+    - task: SonarQubePrepare@7
+      inputs:
+        SonarQube: 'SonarQubeDockerHelm'
+        scannerMode: 'dotnet'
+        dotnetScannerVersion: '5.1.250801'
+        projectKey: 'HOME_DockerHelm_0649997a-2597-4daa-bfa7-7214baa79d52'
+        projectName: 'DockerHelm'
       
 - stage: Build
   displayName: Build and push stage
@@ -84,6 +91,17 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+    
+    - script: dotnet build
+      displayName: 'Build Solution for SonarQube Analysis'
+
+    - task: SonarQubeAnalyze@7
+      displayName: 'Run SonarQube Analysis'
+
+    - task: SonarQubePublish@7
+      inputs:
+        pollingTimeoutSec: '300'
+      displayName: 'Publish SonarQube Quality Gate'
 
 # Stage 2: Helm Deployment
 - stage: Deploy
