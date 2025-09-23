@@ -32,22 +32,6 @@ stages:
         - agent.name -equals $(agentName)
     steps:
     # -----------------------------
-    # Install .NET SDK if missing
-    # -----------------------------
-    - script: |
-        echo "Checking .NET SDK..."
-        dotnet --version || sudo apt-get update && sudo apt-get install -y dotnet-sdk-7.0
-      displayName: 'Install .NET SDK'
-
-    # -----------------------------
-    # Install dotnet-format
-    # -----------------------------
-    - script: |
-        dotnet tool install -g dotnet-format || echo "dotnet-format already installed"
-        echo "##vso[task.prependpath]$HOME/.dotnet/tools"
-      displayName: 'Install dotnet-format'
-
-    # -----------------------------
     # Restore NuGet packages
     # -----------------------------
     - script: dotnet restore
