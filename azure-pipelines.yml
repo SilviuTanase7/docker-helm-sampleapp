@@ -23,7 +23,6 @@ stages:
       name: Default
       demands:
         - agent.name -equals $(agentName)
-        - java
     steps:
     # Restore dependencies
     - script: dotnet restore
