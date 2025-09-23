@@ -48,6 +48,7 @@ stages:
     # -----------------------------
     - script: dotnet format analyzers --verify-no-changes
       displayName: 'Run code analyzers'
+      
     - task: SonarQubePrepare@7
       inputs:
         SonarQube: 'SonarQubeDockerHelm'
