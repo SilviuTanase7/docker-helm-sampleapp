@@ -6,15 +6,13 @@ app.MapGet("/", () => "Hello from Sample .NET App running in Docker!");
 
 app.Run();
 
-
-
 namespace SampleApp
 {
-class Program
-{
-static void Main(string[] args)
-{
-    Console.WriteLine("Hello, World!"); 
-}
-}
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Hello, World!");
+        }
+    }
 }
