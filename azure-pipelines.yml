@@ -52,7 +52,6 @@ stages:
       inputs:
         SonarQube: 'SonarQubeDockerHelm'
         scannerMode: 'dotnet'
-        dotnetScannerVersion: '5.1.250801'
         projectKey: 'HOME_DockerHelm_0649997a-2597-4daa-bfa7-7214baa79d52'
         projectName: 'DockerHelm'
       
