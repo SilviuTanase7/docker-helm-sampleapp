@@ -54,6 +54,8 @@ stages:
         scannerMode: 'dotnet'
         projectKey: 'HOME_DockerHelm_0649997a-2597-4daa-bfa7-7214baa79d52'
         projectName: 'DockerHelm'
+        extraProperties: |
+          sonar.host.url=http://192.168.1.2:9000
       
 - stage: Build
   displayName: Build and push stage
