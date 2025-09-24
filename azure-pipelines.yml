@@ -52,11 +52,12 @@ stages:
       - script: dotnet restore SampleApp.sln
         displayName: 'Restore NuGet packages'
 
-      - script: dotnet test SampleApp.Tests/SampleApp.Tests.csproj \
-                --configuration Release \
-                --no-build \
-                --logger "trx;LogFileName=test_results.trx" \
-                --results-directory $(System.DefaultWorkingDirectory)/TestResults
+      - script: |
+          dotnet test SampleApp.Tests/SampleApp.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --logger "trx;LogFileName=test_results.trx" \
+            --results-directory $(System.DefaultWorkingDirectory)/TestResults
         displayName: 'Run Unit Tests'
 
       - task: PublishTestResults@2
