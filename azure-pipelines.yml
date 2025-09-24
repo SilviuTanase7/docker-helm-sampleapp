@@ -44,10 +44,9 @@ stages:
   displayName: 'Run Unit Tests'
   jobs:
   - job: UnitTests
+    displayName: 'Unit Tests'
     pool:
       name: Default
-      demands:
-        - agent.name -equals $(agentName)
     steps:
       - script: dotnet restore SampleApp.sln
         displayName: 'Restore NuGet packages'
@@ -64,7 +63,6 @@ stages:
         inputs:
           testResultsFiles: '$(System.DefaultWorkingDirectory)/TestResults/*.trx'
           testRunTitle: 'Unit Tests'
-
 
 # -----------------------------
 # Stage 3: Build & Docker
