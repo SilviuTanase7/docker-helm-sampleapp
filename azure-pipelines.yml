@@ -40,18 +40,26 @@ stages:
 # -----------------------------
 # Stage 2: Test
 # -----------------------------
+# -----------------------------
+# Stage: Unit Tests
+# -----------------------------
 - stage: Test
   displayName: 'Run Unit Tests'
   jobs:
   - job: UnitTests
-    displayName: 'Unit Tests'
+    displayName: 'Run Unit Tests'
     pool:
       name: Default
     steps:
-      - script: dotnet restore SampleApp.sln
+      # Restore NuGet packages for the solution
+      - script: |
+          echo "Restoring NuGet packages..."
+          dotnet restore SampleApp.sln
         displayName: 'Restore NuGet packages'
 
+      # Run unit tests for SampleApp.Tests project
       - script: |
+          echo "Running unit tests..."
           dotnet test SampleApp.Tests/SampleApp.Tests.csproj \
             --configuration Release \
             --no-build \
@@ -59,10 +67,13 @@ stages:
             --results-directory $(System.DefaultWorkingDirectory)/TestResults
         displayName: 'Run Unit Tests'
 
+      # Publish test results to Azure DevOps
       - task: PublishTestResults@2
         inputs:
           testResultsFiles: '$(System.DefaultWorkingDirectory)/TestResults/*.trx'
           testRunTitle: 'Unit Tests'
+          mergeTestResults: true
+          failTaskOnFailedTests: true
 
 # -----------------------------
 # Stage 3: Build & Docker
