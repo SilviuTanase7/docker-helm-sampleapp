@@ -1,0 +1,16 @@
+repos:
+  - repo: local
+    hooks:
+      # Check code formatting (whitespace/indentation)
+      - id: dotnet-format-whitespace
+        name: dotnet format (whitespace)
+        entry: dotnet format whitespace --verify-no-changes
+        language: system
+        types: [c#]
+
+      # Run analyzers (warnings only)
+      - id: dotnet-format-analyzers
+        name: dotnet format (analyzers)
+        entry: dotnet format analyzers --verify-no-changes
+        language: system
+        types: [c#]
