@@ -37,9 +37,36 @@ stages:
     - script: dotnet format analyzers --verify-no-changes
       displayName: 'Run code analyzers'
       continueOnError: true
+# -----------------------------
+# Stage 2: Test
+# -----------------------------
+- stage: Test
+  displayName: 'Run Unit Tests'
+  jobs:
+  - job: UnitTests
+    pool:
+      name: Default
+      demands:
+        - agent.name -equals $(agentName)
+    steps:
+      - script: dotnet restore SampleApp.sln
+        displayName: 'Restore NuGet packages'
+
+      - script: dotnet test SampleApp.Tests/SampleApp.Tests.csproj \
+                --configuration Release \
+                --no-build \
+                --logger "trx;LogFileName=test_results.trx" \
+                --results-directory $(System.DefaultWorkingDirectory)/TestResults
+        displayName: 'Run Unit Tests'
+
+      - task: PublishTestResults@2
+        inputs:
+          testResultsFiles: '$(System.DefaultWorkingDirectory)/TestResults/*.trx'
+          testRunTitle: 'Unit Tests'
+
 
 # -----------------------------
-# Stage 2: Build & Docker
+# Stage 3: Build & Docker
 # -----------------------------
 - stage: Build
   displayName: 'Build and Push Docker Image'

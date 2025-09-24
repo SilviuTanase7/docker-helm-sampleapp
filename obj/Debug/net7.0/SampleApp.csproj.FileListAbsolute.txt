@@ -1,0 +1,6 @@
+C:\Users\40748\ADO\obj\Debug\net7.0\SampleApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\40748\ADO\obj\Debug\net7.0\SampleApp.AssemblyInfoInputs.cache
+C:\Users\40748\ADO\obj\Debug\net7.0\SampleApp.AssemblyInfo.cs
+C:\Users\40748\ADO\obj\Debug\net7.0\SampleApp.csproj.CoreCompileInputs.cache
+C:\Users\40748\ADO\obj\Debug\net7.0\SampleApp.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\40748\ADO\obj\Debug\net7.0\SampleApp.sourcelink.json
