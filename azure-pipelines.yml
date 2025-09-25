@@ -95,6 +95,12 @@ stages:
           sonar.host.url=http://192.168.1.2:9000
           sonar.login=$(SONARQUBE_TOKEN)
 
+    - script: dotnet restore
+      displayName: 'Restore NuGet packages'
+
+    - script: dotnet list package --vulnerable
+      displayName: 'Dependency Vulnerability Scan'
+
     # Build solution (required for Sonar)
     - script: dotnet build
       displayName: 'Build Solution'
@@ -119,6 +125,15 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+
+    # Docker vulnerability scan with Trivy from ACR (no manual login needed)
+    - script: |
+        # Install Trivy
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+
+        # Scan the image directly from ACR
+        ./trivy image --exit-code 1 --severity HIGH,CRITICAL dockerhelm.azurecr.io/$(imageRepository):$(tag)
+      displayName: 'Trivy Scan Docker Image from ACR'
 
 # -----------------------------
 # Stage 3: Helm Deployment
