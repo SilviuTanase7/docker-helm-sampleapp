@@ -132,7 +132,7 @@ stages:
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
 
         # Scan the image directly from ACR
-        ./trivy image --exit-code 1 --severity HIGH,CRITICAL dockerhelm.azurecr.io/$(imageRepository):$(tag)
+        ./bin/trivy image --exit-code 1 --severity HIGH,CRITICAL dockerhelm.azurecr.io/$(imageRepository):$(tag)
       displayName: 'Trivy Scan Docker Image from ACR'
 
 # -----------------------------
