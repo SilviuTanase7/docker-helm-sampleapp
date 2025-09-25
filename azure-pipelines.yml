@@ -105,6 +105,13 @@ stages:
     - script: dotnet build
       displayName: 'Build Solution'
 
+    # Prepare SBOM folder (ownership-safe & restrictive)
+    - script: |
+        mkdir -p $(Build.ArtifactStagingDirectory)/sbom
+        chown -R $(whoami):$(whoami) $(Build.ArtifactStagingDirectory)/sbom
+        chmod -R u+rwX $(Build.ArtifactStagingDirectory)/sbom
+      displayName: 'Prepare SBOM folder with secure permissions'
+
     # Generate SBOM for .NET app
     - script: |
         dotnet tool install --global CycloneDX --version 4.1.0
@@ -147,12 +154,7 @@ stages:
         ./bin/trivy image --format cyclonedx --output $(Build.ArtifactStagingDirectory)/sbom/docker-sbom.json dockerhelm.azurecr.io/$(imageRepository):$(tag)
       displayName: 'Generate SBOM for Docker image'
 
-    - script: |
-        mkdir -p $(Build.ArtifactStagingDirectory)/sbom
-        chmod -R u+rw $(Build.ArtifactStagingDirectory)/sbom
-      displayName: 'Fix SBOM directory permissions (user only)'
-
-    # Merge SBOMs into single file
+    # Merge SBOMs (secure)
     - script: |
         curl -sSL https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-x64 -o cyclonedx
         chmod +x cyclonedx
@@ -161,9 +163,9 @@ stages:
           --output-file $(Build.ArtifactStagingDirectory)/sbom/sbom-merged.json
       displayName: 'Merge .NET + Docker SBOM'
 
+    # Publish merged SBOM
     - publish: $(Build.ArtifactStagingDirectory)/sbom/sbom-merged.json
       artifact: sbom
-    
 
 # -----------------------------
 # Stage 3: Helm Deployment
