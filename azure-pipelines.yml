@@ -95,30 +95,38 @@ stages:
           sonar.host.url=http://192.168.1.2:9000
           sonar.login=$(SONARQUBE_TOKEN)
 
+    # Restore dependencies
     - script: dotnet restore
       displayName: 'Restore NuGet packages'
 
+    # Dependency vulnerability scan
     - script: dotnet list package --vulnerable
       displayName: 'Dependency Vulnerability Scan'
 
-    # Build solution (required for Sonar)
-    - script: dotnet build
+    # Build solution
+    - script: dotnet build --configuration Release
       displayName: 'Build Solution'
 
-    # Prepare SBOM folder (ownership-safe & restrictive)
+    # -----------------------------
+    # Prepare SBOM folder
+    # -----------------------------
     - script: |
         mkdir -p $(Pipeline.Workspace)/sbom
         chmod -R u+rwX $(Pipeline.Workspace)/sbom
       displayName: 'Prepare SBOM folder in pipeline workspace'
 
-    # Generate SBOM for .NET app
+    # -----------------------------
+    # Generate .NET SBOM
+    # -----------------------------
     - script: |
         dotnet tool install --tool-path $(Pipeline.Workspace)/.dotnet/tools CycloneDX --version 4.1.0
         export PATH="$PATH:$(Pipeline.Workspace)/.dotnet/tools"
         dotnet CycloneDX SampleApp.sln -o $(Pipeline.Workspace)/sbom/dotnet-sbom.json
       displayName: 'Generate SBOM for .NET dependencies'
 
+    # -----------------------------
     # Run SonarQube analysis
+    # -----------------------------
     - task: SonarQubeAnalyze@7
       displayName: 'Run SonarQube Analysis'
 
@@ -128,7 +136,9 @@ stages:
       inputs:
         pollingTimeoutSec: '300'
 
+    # -----------------------------
     # Build & push Docker image
+    # -----------------------------
     - task: Docker@2
       displayName: 'Build and Push Docker Image'
       inputs:
@@ -139,21 +149,24 @@ stages:
         tags: |
           $(tag)
 
-    # Docker vulnerability scan with Trivy from ACR (no manual login needed)
+    # -----------------------------
+    # Docker vulnerability scan with Trivy
+    # -----------------------------
     - script: |
-        # Install Trivy
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-
-        # Scan the image directly from ACR
         ./bin/trivy image --severity HIGH,CRITICAL dockerhelm.azurecr.io/$(imageRepository):$(tag)
       displayName: 'Trivy Scan Docker Image from ACR'
-    
-    # Generate SBOM for Docker image
+
+    # -----------------------------
+    # Generate Docker SBOM
+    # -----------------------------
     - script: |
         ./bin/trivy image --format cyclonedx --output $(Pipeline.Workspace)/sbom/docker-sbom.json dockerhelm.azurecr.io/$(imageRepository):$(tag)
       displayName: 'Generate SBOM for Docker image'
 
-    # Merge SBOMs (secure)
+    # -----------------------------
+    # Merge SBOMs
+    # -----------------------------
     - script: |
         curl -sSL https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-x64 -o cyclonedx
         chmod +x cyclonedx
@@ -162,9 +175,12 @@ stages:
           --output-file $(Pipeline.Workspace)/sbom/sbom-merged.json
       displayName: 'Merge .NET + Docker SBOM'
 
+    # -----------------------------
     # Publish merged SBOM
+    # -----------------------------
     - publish: $(Pipeline.Workspace)/sbom/sbom-merged.json
       artifact: sbom
+
 
 # -----------------------------
 # Stage 3: Helm Deployment
