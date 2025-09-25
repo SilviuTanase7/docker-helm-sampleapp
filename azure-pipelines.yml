@@ -105,6 +105,13 @@ stages:
     - script: dotnet build
       displayName: 'Build Solution'
 
+    # Generate SBOM for .NET app
+    - script: |
+        dotnet tool install --global CycloneDX
+        export PATH="$PATH:/home/vsts/.dotnet/tools"
+        dotnet CycloneDX SampleApp.sln -o $(Build.ArtifactStagingDirectory)/sbom/dotnet-sbom.json
+      displayName: 'Generate SBOM for .NET dependencies'
+
     # Run SonarQube analysis
     - task: SonarQubeAnalyze@7
       displayName: 'Run SonarQube Analysis'
@@ -134,6 +141,25 @@ stages:
         # Scan the image directly from ACR
         ./bin/trivy image --severity HIGH,CRITICAL dockerhelm.azurecr.io/$(imageRepository):$(tag)
       displayName: 'Trivy Scan Docker Image from ACR'
+    
+    # Generate SBOM for Docker image
+    - script: |
+        ./bin/trivy image --format cyclonedx --output $(Build.ArtifactStagingDirectory)/sbom/docker-sbom.json dockerhelm.azurecr.io/$(imageRepository):$(tag)
+      displayName: 'Generate SBOM for Docker image'
+
+    # Merge SBOMs into single file
+    - script: |
+        curl -sSL https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-x64 -o cyclonedx
+        chmod +x cyclonedx
+        ./cyclonedx merge \
+          --input $(Build.ArtifactStagingDirectory)/sbom/dotnet-sbom.json \
+          --input $(Build.ArtifactStagingDirectory)/sbom/docker-sbom.json \
+          --output $(Build.ArtifactStagingDirectory)/sbom/sbom-merged.json
+      displayName: 'Merge .NET + Docker SBOM'
+
+    - publish: $(Build.ArtifactStagingDirectory)/sbom/sbom-merged.json
+      artifact: sbom
+    
 
 # -----------------------------
 # Stage 3: Helm Deployment
