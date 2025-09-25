@@ -107,16 +107,15 @@ stages:
 
     # Prepare SBOM folder (ownership-safe & restrictive)
     - script: |
-        mkdir -p $(Build.ArtifactStagingDirectory)/sbom
-        chown -R $(whoami):$(whoami) $(Build.ArtifactStagingDirectory)/sbom
-        chmod -R u+rwX $(Build.ArtifactStagingDirectory)/sbom
-      displayName: 'Prepare SBOM folder (ownership + restrictive permissions)'
+        mkdir -p $(Pipeline.Workspace)/sbom
+        chmod -R u+rwX $(Pipeline.Workspace)/sbom
+      displayName: 'Prepare SBOM folder in pipeline workspace'
 
     # Generate SBOM for .NET app
     - script: |
-        dotnet tool install --global CycloneDX --version 4.1.0
-        export PATH="$PATH:/home/vsts/.dotnet/tools"
-        dotnet CycloneDX SampleApp.sln -o $(Build.ArtifactStagingDirectory)/sbom/dotnet-sbom.json
+        dotnet tool install --tool-path $(Pipeline.Workspace)/.dotnet/tools CycloneDX --version 4.1.0
+        export PATH="$PATH:$(Pipeline.Workspace)/.dotnet/tools"
+        dotnet CycloneDX SampleApp.sln -o $(Pipeline.Workspace)/sbom/dotnet-sbom.json
       displayName: 'Generate SBOM for .NET dependencies'
 
     # Run SonarQube analysis
@@ -151,7 +150,7 @@ stages:
     
     # Generate SBOM for Docker image
     - script: |
-        ./bin/trivy image --format cyclonedx --output $(Build.ArtifactStagingDirectory)/sbom/docker-sbom.json dockerhelm.azurecr.io/$(imageRepository):$(tag)
+        ./bin/trivy image --format cyclonedx --output $(Pipeline.Workspace)/sbom/docker-sbom.json dockerhelm.azurecr.io/$(imageRepository):$(tag)
       displayName: 'Generate SBOM for Docker image'
 
     # Merge SBOMs (secure)
@@ -159,12 +158,12 @@ stages:
         curl -sSL https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-x64 -o cyclonedx
         chmod +x cyclonedx
         ./cyclonedx merge \
-          --input-files "$(Build.ArtifactStagingDirectory)/sbom/dotnet-sbom.json" "$(Build.ArtifactStagingDirectory)/sbom/docker-sbom.json" \
-          --output-file $(Build.ArtifactStagingDirectory)/sbom/sbom-merged.json
+          --input-files "$(Pipeline.Workspace)/sbom/dotnet-sbom.json" "$(Pipeline.Workspace)/sbom/docker-sbom.json" \
+          --output-file $(Pipeline.Workspace)/sbom/sbom-merged.json
       displayName: 'Merge .NET + Docker SBOM'
 
     # Publish merged SBOM
-    - publish: $(Build.ArtifactStagingDirectory)/sbom/sbom-merged.json
+    - publish: $(Pipeline.Workspace)/sbom/sbom-merged.json
       artifact: sbom
 
 # -----------------------------
