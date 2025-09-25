@@ -152,10 +152,10 @@ stages:
         curl -sSL https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-x64 -o cyclonedx
         chmod +x cyclonedx
         ./cyclonedx merge \
-          --input $(Build.ArtifactStagingDirectory)/sbom/dotnet-sbom.json \
-          --input $(Build.ArtifactStagingDirectory)/sbom/docker-sbom.json \
-          --output $(Build.ArtifactStagingDirectory)/sbom/sbom-merged.json
+          --input-files "$(Build.ArtifactStagingDirectory)/sbom/dotnet-sbom.json $(Build.ArtifactStagingDirectory)/sbom/docker-sbom.json" \
+          --output-file $(Build.ArtifactStagingDirectory)/sbom/sbom-merged.json
       displayName: 'Merge .NET + Docker SBOM'
+
 
     - publish: $(Build.ArtifactStagingDirectory)/sbom/sbom-merged.json
       artifact: sbom
