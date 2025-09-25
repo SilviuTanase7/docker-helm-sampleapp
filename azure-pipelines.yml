@@ -107,7 +107,7 @@ stages:
 
     # Generate SBOM for .NET app
     - script: |
-        dotnet tool install --global CycloneDX
+        dotnet tool install --global CycloneDX --version 4.1.0
         export PATH="$PATH:/home/vsts/.dotnet/tools"
         dotnet CycloneDX SampleApp.sln -o $(Build.ArtifactStagingDirectory)/sbom/dotnet-sbom.json
       displayName: 'Generate SBOM for .NET dependencies'
