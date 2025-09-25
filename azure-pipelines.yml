@@ -110,7 +110,7 @@ stages:
         mkdir -p $(Build.ArtifactStagingDirectory)/sbom
         chown -R $(whoami):$(whoami) $(Build.ArtifactStagingDirectory)/sbom
         chmod -R u+rwX $(Build.ArtifactStagingDirectory)/sbom
-      displayName: 'Prepare SBOM folder with secure permissions'
+      displayName: 'Prepare SBOM folder (ownership + restrictive permissions)'
 
     # Generate SBOM for .NET app
     - script: |
