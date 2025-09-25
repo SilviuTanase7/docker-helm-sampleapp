@@ -73,10 +73,10 @@ stages:
 # Stage 3: Build & Docker
 # -----------------------------
 - stage: Build
-  displayName: 'Build and Push Docker Image'
+  displayName: 'Build, Scan & SBOM'
   jobs:
   - job: Build
-    displayName: 'Build and Push'
+    displayName: 'Build & SBOM'
     pool:
       name: Default
       demands: 
@@ -95,38 +95,36 @@ stages:
           sonar.host.url=http://192.168.1.2:9000
           sonar.login=$(SONARQUBE_TOKEN)
 
+    # Restore NuGet packages
     - script: dotnet restore
       displayName: 'Restore NuGet packages'
 
+    # Vulnerability scan for .NET packages
     - script: dotnet list package --vulnerable
       displayName: 'Dependency Vulnerability Scan'
 
-    # Build solution (required for Sonar)
+    # Build solution
     - script: dotnet build
       displayName: 'Build Solution'
 
-    # Prepare SBOM folder (ownership-safe & restrictive)
+    # Prepare SBOM folder with correct permissions
     - script: |
         SBOM_DIR="$(Pipeline.Workspace)/sbom"
         mkdir -p "$SBOM_DIR"
         chmod -R u+rwX "$SBOM_DIR"
         echo "SBOM folder prepared at $SBOM_DIR"
-      displayName: 'Prepare SBOM folder in pipeline workspace'
+      displayName: 'Prepare SBOM folder'
 
-    # Generate and Merge SBOMs (automatic CycloneDX version selection)
+    # Generate .NET SBOM
     - script: |
         set -e
-
         DOTNET_VERSION=$(dotnet --version)
-        echo "Detected .NET SDK version: $DOTNET_VERSION"
         DOTNET_MAJOR=$(echo $DOTNET_VERSION | cut -d. -f1)
 
         if [ "$DOTNET_MAJOR" -lt 8 ]; then
           CYCLONEDX_VERSION="4.1.0"
-          echo "Using CycloneDX $CYCLONEDX_VERSION (compatible with .NET < 8)"
         else
           CYCLONEDX_VERSION="5.4.0"
-          echo "Using CycloneDX $CYCLONEDX_VERSION (compatible with .NET >= 8)"
         fi
 
         DOTNET_TOOLS_DIR="$(Pipeline.Workspace)/.dotnet/tools"
@@ -136,37 +134,42 @@ stages:
 
         DOTNET_SBOM="$SBOM_DIR/dotnet-sbom.json"
         echo "Generating .NET SBOM..."
-        if ! dotnet CycloneDX SampleApp.sln -o "$DOTNET_SBOM"; then
-          echo "ERROR: CycloneDX failed for .NET solution!"
-          ls -l
-          ls -l "$SBOM_DIR"
-          exit 1
-        fi
+        dotnet CycloneDX SampleApp.sln -o "$DOTNET_SBOM"
         head -n 5 "$DOTNET_SBOM"
+      displayName: 'Generate .NET SBOM'
 
-        # Build & push Docker image
-        docker build -t dockerhelm.azurecr.io/$(imageRepository):$(tag) -f $(dockerfilePath) .
-        docker push dockerhelm.azurecr.io/$(imageRepository):$(tag)
+    # Build & push Docker image
+    - task: Docker@2
+      displayName: 'Build and Push Docker Image'
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
 
-        # Docker SBOM
+    # Install Trivy and generate Docker SBOM
+    - script: |
+        TRIVY_PATH="$(Pipeline.Workspace)/.trivy"
+        mkdir -p "$TRIVY_PATH"
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b "$TRIVY_PATH"
+        export PATH="$PATH:$TRIVY_PATH"
+
         DOCKER_SBOM="$SBOM_DIR/docker-sbom.json"
         echo "Generating Docker SBOM..."
-        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-        ./bin/trivy image --format cyclonedx --output "$DOCKER_SBOM" dockerhelm.azurecr.io/$(imageRepository):$(tag)
+        trivy image --format cyclonedx --output "$DOCKER_SBOM" dockerhelm.azurecr.io/$(imageRepository):$(tag)
         head -n 5 "$DOCKER_SBOM"
+      displayName: 'Generate Docker SBOM with Trivy'
 
-        # Download CycloneDX CLI for merge
-        CYCLONE_CLI="$SBOM_DIR/cyclonedx"
-        curl -sSL https://github.com/CycloneDX/cyclonedx-cli/releases/latest/download/cyclonedx-linux-x64 -o "$CYCLONE_CLI"
-        chmod +x "$CYCLONE_CLI"
-
-        # Merge SBOMs
+    # Merge .NET + Docker SBOMs
+    - script: |
+        CYCLONE_CLI="$DOTNET_TOOLS_DIR/cyclonedx"
         MERGED_SBOM="$SBOM_DIR/sbom-merged.json"
         "$CYCLONE_CLI" merge --input-files "$DOTNET_SBOM" "$DOCKER_SBOM" --output-file "$MERGED_SBOM"
         echo "Merged SBOM preview:"
         head -n 5 "$MERGED_SBOM"
-
-      displayName: 'Generate and Merge SBOMs'
+      displayName: 'Merge SBOMs'
 
     # Run SonarQube analysis
     - task: SonarQubeAnalyze@7
@@ -178,7 +181,7 @@ stages:
       inputs:
         pollingTimeoutSec: '300'
 
-    # Publish merged SBOM
+    # Publish merged SBOM artifact
     - publish: $(Pipeline.Workspace)/sbom/sbom-merged.json
       artifact: sbom
 
