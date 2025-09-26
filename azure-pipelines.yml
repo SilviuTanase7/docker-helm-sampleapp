@@ -152,6 +152,7 @@ stages:
     - publish: image-vulns.json
       artifact: CVSSScanReport
       displayName: 'Publish vulnerability scan report'
+      condition: always()
 
 # -----------------------------
 # Stage 4: Helm Deployment
