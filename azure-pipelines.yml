@@ -149,6 +149,10 @@ stages:
         fi
       displayName: 'CVSS Gating: Block deploy if critical vulnerabilities found'
 
+    - publish: image-vulns.json
+      artifact: CVSSScanReport
+      displayName: 'Publish vulnerability scan report'
+
 # -----------------------------
 # Stage 4: Helm Deployment
 # -----------------------------
