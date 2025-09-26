@@ -73,37 +73,23 @@ stages:
           mergeTestResults: true
           failTaskOnFailedTests: true
 
-# -----------------------------
-# Stage: Secrets Scan
-# -----------------------------
 - stage: SecretsScan
-  displayName: 'Secrets Scan'
+  displayName: "Secrets Scan Stage"
   jobs:
-    - job: TruffleHogScan
+  - job: TruffleHogScan
+    displayName: "Run TruffleHog Secrets Scan"
+    pool:
+      vmImage: 'ubuntu-latest'   # or your self-hosted agent
+    steps:
+    - script: |
+        python3 -m pip install --upgrade pip
+        python3 -m pip install truffleHog
+      displayName: 'Install TruffleHog'
+
+    - script: |
+        echo "Running secrets scan..."
+        python3 -m truffleHog scan --repo_path . --json || exit 1
       displayName: 'Run TruffleHog Scan'
-      pool:
-        name: Default
-      steps:
-        # Install Python and TruffleHog
-        - task: UsePythonVersion@0
-          inputs:
-            versionSpec: '3.x'
-
-        - script: |
-            python -m pip install --upgrade pip
-            pip install truffleHog
-          displayName: 'Install TruffleHog'
-
-        # Run TruffleHog scan
-        - script: |
-            trufflehog scan --repo_path . --json --rules trufflehog-rules.json > trufflehog-report.json || true
-            cat trufflehog-report.json
-            # Fail the pipeline if secrets are found
-            if [ -s trufflehog-report.json ]; then
-              echo "❌ Secrets found! Pipeline blocked."
-              exit 1
-            fi
-          displayName: 'Run TruffleHog Scan and Block Deploy'
 
 # -----------------------------
 # Stage 3: Build & Docker
