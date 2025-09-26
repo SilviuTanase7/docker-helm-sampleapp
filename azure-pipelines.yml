@@ -111,7 +111,30 @@ stages:
     - script: dotnet build
       displayName: 'Build Solution'
 
- # Install CycloneDX .NET tool locally
+     # Install sbom-tool globally
+    - script: |
+        dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.* || dotnet tool update --global Microsoft.Sbom.DotNetTool --version 4.*
+        export PATH="$PATH:$HOME/.dotnet/tools"
+
+        DROP_DIR=$(Build.SourcesDirectory)/SampleApp/bin/$(BUILD_CONFIGURATION)/net7.0/publish
+        mkdir -p "$DROP_DIR"
+
+        dotnet publish SampleApp/SampleApp.csproj -c $(BUILD_CONFIGURATION) -o "$DROP_DIR"
+
+        sbom-tool generate \
+          -b "$DROP_DIR" \
+          -pn $(PACKAGE_NAME) \
+          -pv $(PACKAGE_VERSION) \
+          -nsb $(SBOM_NS_BASE)
+
+        echo "✅ SBOM generated at $DROP_DIR/_manifest"
+      displayName: 'Publish app & generate SBOM'
+
+    - publish: $(Build.SourcesDirectory)/SampleApp/bin/Release/net7.0/publish/_manifest
+      artifact: dotnet-sbom
+      displayName: 'Publish SBOM artifact'
+
+    # Install CycloneDX .NET tool locally
     - script: |
         cd $(Build.SourcesDirectory)
         dotnet new tool-manifest --force
@@ -134,7 +157,7 @@ stages:
     # Publish SBOM as artifact
     - publish: $(Build.ArtifactStagingDirectory)/bom.json
       artifact: dotnet-sbom
-      displayName: 'Publish SBOM artifact
+      displayName: 'Publish SBOM artifact'
 
     # Build & push Docker image
     - task: Docker@2
