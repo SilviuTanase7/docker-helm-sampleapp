@@ -9,6 +9,10 @@ variables:
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
   agentName: 'homeAgent'
+  BUILD_CONFIGURATION: 'Release'
+  PACKAGE_NAME: 'MyApp'
+  PACKAGE_VERSION: '$(Build.BuildNumber)'
+  SBOM_NS_BASE: 'http://sbom.local'
 
 stages:
 # -----------------------------
@@ -106,6 +110,32 @@ stages:
     # Build solution
     - script: dotnet build
       displayName: 'Build Solution'
+
+    # Install Microsoft sbom-tool as a local dotnet tool
+    - script: |
+        dotnet new tool-manifest --force
+        dotnet tool install --local Microsoft.Sbom.DotNetTool --version 4.* || dotnet tool update --local Microsoft.Sbom.DotNetTool --version 4.*
+        dotnet tool restore
+      displayName: 'Install Microsoft sbom-tool'
+
+    # Publish app and generate SBOM
+    - script: |
+        DROP_DIR=$(System.DefaultWorkingDirectory)/src/MyApp/bin/$(BUILD_CONFIGURATION)/net7.0/publish
+        mkdir -p "$DROP_DIR"
+        dotnet publish src/MyApp -c $(BUILD_CONFIGURATION) -o "$DROP_DIR"
+
+        dotnet tool run sbom-tool generate \
+          -b "$DROP_DIR" \
+          -pn $(PACKAGE_NAME) \
+          -pv $(PACKAGE_VERSION) \
+          -nsb $(SBOM_NS_BASE)
+
+        echo "SBOM generated at $DROP_DIR/_manifest"
+      displayName: 'Generate SBOM (SPDX)'
+
+    - publish: $(System.DefaultWorkingDirectory)/src/MyApp/bin/$(BUILD_CONFIGURATION)/net7.0/publish/_manifest
+      artifact: dotnet-sbom
+      displayName: 'Publish SBOM artifact'
 
     # Build & push Docker image
     - task: Docker@2
