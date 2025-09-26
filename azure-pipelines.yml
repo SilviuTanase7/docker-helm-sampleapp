@@ -74,6 +74,33 @@ stages:
           failTaskOnFailedTests: true
 
 # -----------------------------
+# Stage: Secrets Scan
+# -----------------------------
+- stage: SecretsScan
+  displayName: 'Secrets Scan'
+  jobs:
+    - job: TruffleHogScan
+      displayName: 'Run TruffleHog Scan'
+      pool:
+        name: Default
+      steps:
+        # Install Python and TruffleHog
+        - task: UsePythonVersion@0
+          inputs:
+            versionSpec: '3.x'
+
+        # Run TruffleHog scan
+        - script: |
+            trufflehog scan --repo_path . --json --rules trufflehog-rules.json > trufflehog-report.json || true
+            cat trufflehog-report.json
+            # Fail the pipeline if secrets are found
+            if [ -s trufflehog-report.json ]; then
+              echo "❌ Secrets found! Pipeline blocked."
+              exit 1
+            fi
+          displayName: 'Run TruffleHog Scan and Block Deploy'
+
+# -----------------------------
 # Stage 3: Build & Docker
 # -----------------------------
 - stage: Build
