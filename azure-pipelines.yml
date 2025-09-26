@@ -79,7 +79,7 @@ stages:
   - job: TruffleHogScan
     displayName: "Run TruffleHog Secrets Scan"
     pool:
-      vmImage: 'ubuntu-latest'   # or your self-hosted agent
+      vmImage: 'ubuntu-latest'
     steps:
     - script: |
         python3 -m pip install --upgrade pip
@@ -88,8 +88,12 @@ stages:
 
     - script: |
         echo "Running secrets scan..."
-        python3 -m truffleHog scan --repo_path . --json || exit 1
+        trufflehog scan --repo_path . --json > trufflehog-report.json || exit 1
       displayName: 'Run TruffleHog Scan'
+
+    - publish: trufflehog-report.json
+      artifact: TruffleHogReport
+      displayName: 'Publish TruffleHog Report'
 
 # -----------------------------
 # Stage 3: Build & Docker
