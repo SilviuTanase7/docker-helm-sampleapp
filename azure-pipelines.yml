@@ -136,9 +136,6 @@ stages:
     - script: |
         IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
 
-        # Install Grype (if not already installed on self-hosted agent)
-        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-
         # Scan Docker image
         grype $IMAGE_NAME -o json > image-vulns.json
 
