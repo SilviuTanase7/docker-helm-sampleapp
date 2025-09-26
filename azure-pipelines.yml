@@ -111,22 +111,17 @@ stages:
     - script: dotnet build
       displayName: 'Build Solution'
 
-    # Install Microsoft sbom-tool as a local dotnet tool
+     # Install sbom-tool globally
     - script: |
-        cd $(Build.SourcesDirectory)
-        dotnet new tool-manifest --force
-        dotnet tool install --local Microsoft.Sbom.DotNetTool --version 4.* || dotnet tool update --local Microsoft.Sbom.DotNetTool --version 4.*
-        dotnet tool restore
-      displayName: 'Install Microsoft sbom-tool'
+        dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.* || dotnet tool update --global Microsoft.Sbom.DotNetTool --version 4.*
+        export PATH="$PATH:$HOME/.dotnet/tools"
 
-    # Publish app and generate SBOM
-    - script: |
         DROP_DIR=$(Build.SourcesDirectory)/SampleApp/bin/$(BUILD_CONFIGURATION)/net7.0/publish
         mkdir -p "$DROP_DIR"
 
         dotnet publish SampleApp/SampleApp.csproj -c $(BUILD_CONFIGURATION) -o "$DROP_DIR"
 
-        dotnet tool run sbom-tool generate \
+        sbom-tool generate \
           -b "$DROP_DIR" \
           -pn $(PACKAGE_NAME) \
           -pv $(PACKAGE_VERSION) \
