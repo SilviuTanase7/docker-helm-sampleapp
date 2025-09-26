@@ -77,10 +77,10 @@ stages:
 # Stage 3: Build & Docker
 # -----------------------------
 - stage: Build
-  displayName: 'Build, Scan & SBOM'
+  displayName: 'Build, Scan'
   jobs:
   - job: Build
-    displayName: 'Build & SBOM'
+    displayName: 'Build'
     pool:
       name: Default
       demands: 
@@ -100,7 +100,7 @@ stages:
           sonar.login=$(SONARQUBE_TOKEN)
 
     # Restore NuGet packages
-    - script: dotnet restore
+    - script: dotnet restore --locked-mode
       displayName: 'Restore NuGet packages'
 
     # Vulnerability scan for .NET packages
@@ -110,54 +110,6 @@ stages:
     # Build solution
     - script: dotnet build
       displayName: 'Build Solution'
-
-     # Install sbom-tool globally
-    - script: |
-        dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.* || dotnet tool update --global Microsoft.Sbom.DotNetTool --version 4.*
-        export PATH="$PATH:$HOME/.dotnet/tools"
-
-        DROP_DIR=$(Build.SourcesDirectory)/SampleApp/bin/$(BUILD_CONFIGURATION)/net7.0/publish
-        mkdir -p "$DROP_DIR"
-
-        dotnet publish SampleApp/SampleApp.csproj -c $(BUILD_CONFIGURATION) -o "$DROP_DIR"
-
-        sbom-tool generate \
-          -b "$DROP_DIR" \
-          -pn $(PACKAGE_NAME) \
-          -pv $(PACKAGE_VERSION) \
-          -nsb $(SBOM_NS_BASE)
-
-        echo "✅ SBOM generated at $DROP_DIR/_manifest"
-      displayName: 'Publish app & generate SBOM'
-
-    - publish: $(Build.SourcesDirectory)/SampleApp/bin/Release/net7.0/publish/_manifest
-      artifact: dotnet-sbom
-      displayName: 'Publish SBOM artifact'
-
-    # Install CycloneDX .NET tool locally
-    - script: |
-        cd $(Build.SourcesDirectory)
-        dotnet new tool-manifest --force
-        dotnet tool install --local CycloneDX --version 2.*
-        dotnet tool restore
-      displayName: 'Install CycloneDX .NET tool'
-
-    # Publish app
-    - script: |
-        DROP_DIR=$(Build.SourcesDirectory)/SampleApp/bin/$(BUILD_CONFIGURATION)/net7.0/publish
-        mkdir -p "$DROP_DIR"
-        dotnet publish SampleApp/SampleApp.csproj -c $(BUILD_CONFIGURATION) -o "$DROP_DIR"
-      displayName: 'Publish .NET app'
-
-    # Generate CycloneDX SBOM
-    - script: |
-        dotnet tool run cyclonedx -p SampleApp/SampleApp.csproj -o $(Build.ArtifactStagingDirectory)/bom.json --format json
-      displayName: 'Generate CycloneDX SBOM'
-
-    # Publish SBOM as artifact
-    - publish: $(Build.ArtifactStagingDirectory)/bom.json
-      artifact: dotnet-sbom
-      displayName: 'Publish SBOM artifact'
 
     # Build & push Docker image
     - task: Docker@2
@@ -179,6 +131,27 @@ stages:
       displayName: 'Publish SonarQube Quality Gate'
       inputs:
         pollingTimeoutSec: '300'
+
+    # Add this step after your Docker build & push
+    - script: |
+        IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
+
+        # Install Grype (if not already installed on self-hosted agent)
+        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+        # Scan Docker image
+        grype $IMAGE_NAME -o json > image-vulns.json
+
+        # Count Critical/High CVSS vulnerabilities
+        CRITICAL_COUNT=$(jq '[.matches[] | select(.vulnerability.severity=="Critical" or .vulnerability.severity=="High")] | length' image-vulns.json)
+        echo "Critical/High vulnerabilities found: $CRITICAL_COUNT"
+
+        if [ "$CRITICAL_COUNT" -gt 0 ]; then
+          echo "❌ CVSS gating failed: deploy blocked"
+          exit 1
+        fi
+      displayName: 'CVSS Gating: Block deploy if critical vulnerabilities found'
+
 # -----------------------------
 # Stage 4: Helm Deployment
 # -----------------------------
