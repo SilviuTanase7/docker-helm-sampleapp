@@ -142,9 +142,9 @@ stages:
         dockerfile: $(dockerfilePath)
         containerRegistry: $(dockerRegistryServiceConnection)
         tags:  |
-          $(Build.BuildId)         # CI build id
-          $(Build.SourceVersion)   # Git commit SHA
-          latest                   # optional (don’t rely on it for prod)
+          $(Build.BuildId)
+          $(Build.SourceVersion)
+          latest
 
     # Run SonarQube analysis
     - task: SonarQubeAnalyze@7
