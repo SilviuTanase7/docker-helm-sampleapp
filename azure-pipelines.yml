@@ -86,7 +86,7 @@ stages:
     - script: |
         python3 -m pip install --upgrade pip
         pip install checkov
-        checkov -d ./helm --quiet --output json > checkov-helm-report.json
+        checkov -d ./charts --quiet --output json > checkov-helm-report.json
       displayName: "Checkov Helm Scan"
 
     # Install and run Terrascan
@@ -94,7 +94,7 @@ stages:
         curl -L https://github.com/accurics/terrascan/releases/download/v1.19.9/terrascan_1.19.9_Linux_x86_64.tar.gz -o terrascan.tar.gz
         tar -xzf terrascan.tar.gz
         sudo mv terrascan /usr/local/bin/
-        terrascan scan -d ./helm -t helm -o json > terrascan-helm-report.json
+        terrascan scan -d ./charts -t helm -o json > terrascan-helm-report.json
       displayName: "Terrascan Helm Scan"
 
     # Publish reports
