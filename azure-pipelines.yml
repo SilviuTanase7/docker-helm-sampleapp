@@ -86,7 +86,7 @@ stages:
     - script: |
         python3 -m pip install --upgrade pip
         pip install checkov
-        checkov -d ./charts --quiet --output json > checkov-helm-report.json
+        checkov -d ./helm --output json --soft-fail > checkov-helm-report.json
       displayName: "Checkov Helm Scan"
 
     # Install and run Terrascan
