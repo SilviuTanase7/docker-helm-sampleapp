@@ -85,6 +85,13 @@ stages:
       persistCredentials: true
 
     - script: |
+        mkdir -p ./bin
+        sudo mv trufflehog /usr/loccurl -sSL https://github.com/trufflesecurity/trufflehog/releases/download/v3.90.8/trufflehog_3.90.8_linux_arm64.tar.gz -o trufflehog.tar.gz
+        tar -xzf trufflehog.tar.gz
+        sudo mv trufflehog /usr/local/bin/
+      displayName: "Install TruffleHog"
+
+    - script: |
         echo "Running secrets scan..."
         trufflehog filesystem --json . > trufflehog-report.json || exit 1
       displayName: "Run TruffleHog v3 Scan"
