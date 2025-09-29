@@ -201,7 +201,7 @@ stages:
         sed -i "s/^version:.*/version: $VERSION/" $CHART_PATH/Chart.yaml
         sed -i "s/^appVersion:.*/appVersion: \"$(Build.BuildId)\"/" $CHART_PATH/Chart.yaml
 
-        # Package Helm chart into artifact staging dir
+        # Package into staging directory
         helm package $CHART_PATH \
           --version $VERSION \
           --app-version $(Build.BuildId) \
@@ -227,7 +227,7 @@ stages:
           # Login to ACR
           az acr login --name dockerhelm
 
-          # Push chart to ACR Helm repo (OCI)
+          # Push chart to Helm OCI repo
           helm push $CHART_PACKAGE oci://dockerhelm.azurecr.io/helm
 
     # Publish additional reports (SBOM, IaC, CVSS already created earlier)
