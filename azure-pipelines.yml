@@ -214,7 +214,7 @@ stages:
     - task: AzureCLI@2
       displayName: "Push Helm Chart to ACR"
       inputs:
-        azureSubscription: $(dockerRegistryServiceConnection)   # <-- define this in project service connections
+        azureSubscription: AzureRM-Home
         scriptType: bash
         scriptLocation: inlineScript
         inlineScript: |
