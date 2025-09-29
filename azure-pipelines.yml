@@ -72,7 +72,9 @@ stages:
           testRunTitle: 'Unit Tests'
           mergeTestResults: true
           failTaskOnFailedTests: true
-
+# -----------------------------
+# Stage 3: IaC Scan
+# -----------------------------
 - stage: IaCScan
   displayName: "Helm IaC Scan"
   jobs:
@@ -92,9 +94,9 @@ stages:
     # Publish reports
     - publish: checkov-helm-report.json
       artifact: CheckovHelmReport
-      
+
 # -----------------------------
-# Stage 3: Build & Docker
+# Stage 4: Build & Docker
 # -----------------------------
 - stage: Build
   displayName: 'Build, Scan'
@@ -116,7 +118,7 @@ stages:
         projectKey: 'HOME_DockerHelm_0649997a-2597-4daa-bfa7-7214baa79d52'
         projectName: 'DockerHelm'
         extraProperties: |
-          sonar.host.url=http://192.168.1.2:9000
+          sonar.host.url=http://192.168.1.102:9000
           sonar.login=$(SONARQUBE_TOKEN)
 
     # Restore NuGet packages
@@ -139,8 +141,10 @@ stages:
         repository: $(imageRepository)
         dockerfile: $(dockerfilePath)
         containerRegistry: $(dockerRegistryServiceConnection)
-        tags: |
-          $(tag)
+        tags:  |
+          $(Build.BuildId)         # CI build id
+          $(Build.SourceVersion)   # Git commit SHA
+          latest                   # optional (don’t rely on it for prod)
 
     # Run SonarQube analysis
     - task: SonarQubeAnalyze@7
@@ -175,7 +179,53 @@ stages:
       condition: always()
 
 # -----------------------------
-# Stage 4: Helm Deployment
+# Stage 5: Artifact Management
+# -----------------------------
+- stage: ArtifactManagement
+  displayName: "Artifact Management"
+  dependsOn: Build
+  jobs:
+  - job: HelmChartPackage
+    displayName: "Package & Publish Helm Chart"
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: self
+
+    # Update Helm chart version dynamically
+    - script: |
+        CHART_PATH=./charts/sampleapp
+        VERSION="0.1.$(Build.BuildId)"
+        echo "Updating Chart.yaml with version $VERSION"
+
+        sed -i "s/^version:.*/version: $VERSION/" $CHART_PATH/Chart.yaml
+        sed -i "s/^appVersion:.*/appVersion: \"$(Build.BuildId)\"/" $CHART_PATH/Chart.yaml
+
+        helm package $CHART_PATH --version $VERSION --app-version $(Build.BuildId)
+      displayName: "Package Helm Chart"
+
+    # Publish Helm chart as pipeline artifact
+    - publish: $(System.DefaultWorkingDirectory)
+      artifact: HelmChart
+      displayName: "Publish Helm Chart Artifact"
+
+    # (Optional) Push chart to ACR (supports Helm OCI registry)
+    - script: |
+        CHART_PACKAGE=$(ls sampleapp-*.tgz)
+        az acr login --name dockerhelm
+        helm push $CHART_PACKAGE oci://dockerhelm.azurecr.io/helm
+      displayName: "Push Helm Chart to ACR"
+
+    # Publish additional reports (SBOM, IaC, CVSS already created earlier)
+    - publish: checkov-helm-report.json
+      artifact: CheckovHelmReport
+      condition: always()
+
+    - publish: image-vulns.json
+      artifact: CVSSScanReport
+      condition: always()
+# -----------------------------
+# Stage 6: Helm Deployment
 # -----------------------------
 - stage: Deploy
   displayName: 'Deploy to Production'
