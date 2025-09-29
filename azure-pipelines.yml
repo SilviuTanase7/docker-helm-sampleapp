@@ -73,33 +73,35 @@ stages:
           mergeTestResults: true
           failTaskOnFailedTests: true
 
-- stage: SecretsScan
-  displayName: "Secrets Scan Stage"
+- stage: IaCScan
+  displayName: "Helm IaC Scan"
   jobs:
-  - job: TruffleHogScan
-    displayName: "Run TruffleHog Secrets Scan"
+  - job: HelmScanJob
     pool:
       vmImage: 'ubuntu-latest'
     steps:
-    - checkout: self   # ensures the repo is available
-      persistCredentials: true
+    - checkout: self
 
+    # Install and run Checkov
     - script: |
-        mkdir -p ./bin
-        curl -sSL https://github.com/trufflesecurity/trufflehog/releases/download/v3.90.8/trufflehog_3.90.8_linux_arm64.tar.gz -o trufflehog.tar.gz
-        tar -xzf trufflehog.tar.gz
-        sudo mv trufflehog /usr/local/bin/
-      displayName: "Install TruffleHog"
+        python3 -m pip install --upgrade pip
+        pip install checkov
+        checkov -d ./helm --quiet --output json > checkov-helm-report.json
+      displayName: "Checkov Helm Scan"
 
+    # Install and run Terrascan
     - script: |
-        echo "Running secrets scan..."
-        trufflehog filesystem --json . > trufflehog-report.json || exit 1
-      displayName: "Run TruffleHog v3 Scan"
+        curl -L https://github.com/accurics/terrascan/releases/latest/download/terrascan_$(uname -s)_$(uname -m).tar.gz -o terrascan.tar.gz
+        tar -xzf terrascan.tar.gz
+        sudo mv terrascan /usr/local/bin/
+        terrascan scan -d ./helm -t helm -o json > terrascan-helm-report.json
+      displayName: "Terrascan Helm Scan"
 
-    - publish: trufflehog-report.json
-      artifact: TruffleHogReport
-      displayName: "Publish TruffleHog Report"
-
+    # Publish reports
+    - publish: checkov-helm-report.json
+      artifact: CheckovHelmReport
+    - publish: terrascan-helm-report.json
+      artifact: TerrascanHelmReport
 
 # -----------------------------
 # Stage 3: Build & Docker
