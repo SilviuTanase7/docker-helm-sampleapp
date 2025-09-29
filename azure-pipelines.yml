@@ -91,7 +91,7 @@ stages:
 
     # Install and run Terrascan
     - script: |
-        curl -L https://github.com/accurics/terrascan/releases/latest/download/terrascan_$(uname -s)_$(uname -m).tar.gz -o terrascan.tar.gz
+        curl -L https://github.com/accurics/terrascan/releases/download/v1.19.9/terrascan_1.19.9_Linux_x86_64.tar.gz -o terrascan.tar.gz
         tar -xzf terrascan.tar.gz
         sudo mv terrascan /usr/local/bin/
         terrascan scan -d ./helm -t helm -o json > terrascan-helm-report.json
