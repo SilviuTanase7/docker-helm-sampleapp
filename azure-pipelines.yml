@@ -192,7 +192,7 @@ stages:
     steps:
     - checkout: self
 
-    # Update Helm chart version dynamically
+    # Update Helm chart version dynamically and package
     - script: |
         CHART_PATH=./charts/sampleapp
         VERSION="0.1.$(Build.BuildId)"
@@ -201,20 +201,31 @@ stages:
         sed -i "s/^version:.*/version: $VERSION/" $CHART_PATH/Chart.yaml
         sed -i "s/^appVersion:.*/appVersion: \"$(Build.BuildId)\"/" $CHART_PATH/Chart.yaml
 
-        helm package $CHART_PATH --version $VERSION --app-version $(Build.BuildId)
+        # Package chart into the artifact staging directory
+        helm package $CHART_PATH --version $VERSION --app-version $(Build.BuildId) -d $(Build.ArtifactStagingDirectory)
       displayName: "Package Helm Chart"
 
     # Publish Helm chart as pipeline artifact
-    - publish: $(System.DefaultWorkingDirectory)
+    - publish: $(Build.ArtifactStagingDirectory)
       artifact: HelmChart
       displayName: "Publish Helm Chart Artifact"
 
-    # (Optional) Push chart to ACR (supports Helm OCI registry)
-    - script: |
-        CHART_PACKAGE=$(ls sampleapp-*.tgz)
-        az acr login --name dockerhelm
-        helm push $CHART_PACKAGE oci://dockerhelm.azurecr.io/helm
+    # Push chart to ACR (Helm OCI registry)
+    - task: AzureCLI@2
       displayName: "Push Helm Chart to ACR"
+      inputs:
+        azureSubscription: $(azureServiceConnection)   # <-- define this in project service connections
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          CHART_PACKAGE=$(ls $(Build.ArtifactStagingDirectory)/sampleapp-*.tgz)
+          echo "Chart package: $CHART_PACKAGE"
+
+          # Login to ACR
+          az acr login --name dockerhelm
+
+          # Push chart to Helm repo (OCI)
+          helm push $CHART_PACKAGE oci://dockerhelm.azurecr.io/helm
 
     # Publish additional reports (SBOM, IaC, CVSS already created earlier)
     - publish: checkov-helm-report.json
