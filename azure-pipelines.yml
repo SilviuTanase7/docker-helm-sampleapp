@@ -229,7 +229,9 @@ stages:
 # -----------------------------
 - stage: Deploy
   displayName: 'Deploy to Production'
-  dependsOn: Build
+  dependsOn: 
+    - Build
+    - ArtifactManagement
   jobs:
   - deployment: HelmDeploy
     displayName: 'Helm Deploy'
@@ -245,10 +247,16 @@ stages:
             inputs:
               helmVersionToInstall: 'latest'
 
+          - download: current
+            artifact: HelmChart
+
           - script: |
               echo "Using Kubernetes context: $(KUBE_CONTEXT)"
               kubectl config use-context $(KUBE_CONTEXT)
-              helm upgrade --install sampleapp ./charts/sampleapp \
+
+              # Deploy with immutable BuildId-based Helm version
+              CHART_PACKAGE=$(ls $(Pipeline.Workspace)/HelmChart/sampleapp-*.tgz)
+              helm upgrade --install sampleapp $CHART_PACKAGE \
                 --namespace mynamespace \
                 --set image.repository=dockerhelm.azurecr.io/sampleapp \
                 --set image.tag=$(Build.BuildId)
