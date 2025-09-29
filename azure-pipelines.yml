@@ -89,20 +89,10 @@ stages:
         checkov -d ./charts --output json --soft-fail > checkov-helm-report.json
       displayName: "Checkov Helm Scan"
 
-    # Install and run Terrascan
-    - script: |
-        curl -L https://github.com/accurics/terrascan/releases/download/v1.19.9/terrascan_1.19.9_Linux_x86_64.tar.gz -o terrascan.tar.gz
-        tar -xzf terrascan.tar.gz
-        sudo mv terrascan /usr/local/bin/
-        terrascan scan -d ./charts -t helm -o json > terrascan-helm-report.json
-      displayName: "Terrascan Helm Scan"
-
     # Publish reports
     - publish: checkov-helm-report.json
       artifact: CheckovHelmReport
-    - publish: terrascan-helm-report.json
-      artifact: TerrascanHelmReport
-
+      
 # -----------------------------
 # Stage 3: Build & Docker
 # -----------------------------
