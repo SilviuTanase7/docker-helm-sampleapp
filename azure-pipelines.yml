@@ -81,19 +81,24 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
+    - checkout: self   # ensures the repo is available
+      persistCredentials: true
+
     - script: |
-        python3 -m pip install --upgrade pip
-        python3 -m pip install truffleHog
-      displayName: 'Install TruffleHog'
+        echo "Installing TruffleHog v3..."
+        curl -L https://github.com/trufflesecurity/trufflehog/releases/latest/download/trufflehog_$(uname -s)_$(uname -m).tar.gz | tar xz
+        sudo mv trufflehog /usr/local/bin/
+      displayName: "Install TruffleHog v3"
 
     - script: |
         echo "Running secrets scan..."
-        trufflehog scan --repo_path . --json > trufflehog-report.json || exit 1
-      displayName: 'Run TruffleHog Scan'
+        trufflehog filesystem --json . > trufflehog-report.json || exit 1
+      displayName: "Run TruffleHog v3 Scan"
 
     - publish: trufflehog-report.json
       artifact: TruffleHogReport
-      displayName: 'Publish TruffleHog Report'
+      displayName: "Publish TruffleHog Report"
+
 
 # -----------------------------
 # Stage 3: Build & Docker
