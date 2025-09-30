@@ -309,5 +309,5 @@ stages:
                 --version 0.1.$(Build.BuildId) \
                 --set image.repository=dockerhelm.azurecr.io/sampleapp \
                 --set image.tag=$(Build.BuildId) \
-                --rollback-on-failure --wait
+                --rollback-on-failure --wait --timeout 10m
             displayName: 'Deploy Helm Chart from OCI'
