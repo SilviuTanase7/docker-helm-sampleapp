@@ -278,7 +278,7 @@ stages:
 
 - stage: Deploy
   displayName: 'Deploy to Production'
-  dependsOn: 
+  dependsOn:
     - Build
     - ArtifactManagement
   jobs:
@@ -300,8 +300,15 @@ stages:
               echo "Logging in to ACR..."
               az acr login --name dockerhelm
 
-              echo "Using Kubernetes context: $(KUBE_CONTEXT)"
-              kubectl config use-context $(KUBE_CONTEXT)
+              echo "Using Kubernetes context: $KUBE_CONTEXT"
+              kubectl config use-context $KUBE_CONTEXT
+
+              # Check if release exists and is stuck
+              RELEASE_STATUS=$(helm status sampleapp -n mynamespace --output json | jq -r '.status' || echo "not-found")
+              if [ "$RELEASE_STATUS" = "pending-install" ]; then
+                echo "Stuck release detected, uninstalling..."
+                helm uninstall sampleapp -n mynamespace
+              fi
 
               echo "Deploying Helm chart from OCI..."
               helm upgrade --install sampleapp oci://dockerhelm.azurecr.io/helm/sampleapp \
@@ -310,4 +317,8 @@ stages:
                 --set image.repository=dockerhelm.azurecr.io/sampleapp \
                 --set image.tag=$(Build.BuildId) \
                 --rollback-on-failure --wait --timeout 10m
-            displayName: 'Deploy Helm Chart from OCI'
+
+              echo "Checking Pod status after deployment..."
+              kubectl get pods -n mynamespace
+              kubectl get events -n mynamespace --sort-by='.lastTimestamp'
+            displayName: 'Deploy Helm Chart from OCI with Safety Checks'
