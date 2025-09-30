@@ -297,14 +297,17 @@ stages:
               helmVersionToInstall: 'latest'
 
           - script: |
+              echo "Logging in to ACR..."
+              az acr login --name dockerhelm
+
               echo "Using Kubernetes context: $(KUBE_CONTEXT)"
               kubectl config use-context $(KUBE_CONTEXT)
 
-              # Deploy directly from Helm OCI repo
+              echo "Deploying Helm chart from OCI..."
               helm upgrade --install sampleapp oci://dockerhelm.azurecr.io/helm/sampleapp \
                 --namespace mynamespace \
                 --version 0.1.$(Build.BuildId) \
                 --set image.repository=dockerhelm.azurecr.io/sampleapp \
                 --set image.tag=$(Build.BuildId) \
-                --atomic --wait
+                --rollback-on-failure --wait
             displayName: 'Deploy Helm Chart from OCI'
