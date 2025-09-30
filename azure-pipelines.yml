@@ -276,9 +276,6 @@ stages:
             # Push chart to Helm OCI repo
             helm push $CHART_PACKAGE oci://dockerhelm.azurecr.io/helm
 
-# -----------------------------
-# Stage 6: Helm Deployment
-# -----------------------------
 - stage: Deploy
   displayName: 'Deploy to Production'
   dependsOn: 
@@ -299,17 +296,15 @@ stages:
             inputs:
               helmVersionToInstall: 'latest'
 
-          - download: current
-            artifact: HelmChart
-
           - script: |
               echo "Using Kubernetes context: $(KUBE_CONTEXT)"
               kubectl config use-context $(KUBE_CONTEXT)
 
-              # Deploy with immutable BuildId-based Helm version
-              CHART_PACKAGE=$(ls $(Pipeline.Workspace)/HelmChart/sampleapp-*.tgz)
-              helm upgrade --install sampleapp $CHART_PACKAGE \
+              # Deploy directly from Helm OCI repo
+              helm upgrade --install sampleapp oci://dockerhelm.azurecr.io/helm/sampleapp \
                 --namespace mynamespace \
+                --version 0.1.$(Build.BuildId) \
                 --set image.repository=dockerhelm.azurecr.io/sampleapp \
-                --set image.tag=$(Build.BuildId)
-            displayName: 'Deploy Helm Chart'
+                --set image.tag=$(Build.BuildId) \
+                --atomic --wait
+            displayName: 'Deploy Helm Chart from OCI'
