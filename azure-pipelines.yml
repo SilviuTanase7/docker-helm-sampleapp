@@ -214,6 +214,8 @@ stages:
         # Update Chart.yaml
         sed -i "s/^version:.*/version: $VERSION/" $CHART_PATH/Chart.yaml
         sed -i "s/^appVersion:.*/appVersion: \"$(Build.BuildId)\"/" $CHART_PATH/Chart.yaml
+        # Force Chart.yaml name to lowercase
+        sed -i 's/^name:.*/name: sampleapp/' $CHART_PATH/Chart.yaml
 
         # Package chart into staging directory
         helm package $CHART_PATH \
@@ -265,7 +267,7 @@ stages:
             echo "ls Pipeline.Workspace/BuildArtifacts"
             ls $(Pipeline.Workspace)/BuildArtifacts
 
-            CHART_PACKAGE=$(ls $(Pipeline.Workspace)/BuildArtifacts/sampleApp-*.tgz)
+            CHART_PACKAGE=$(ls $(Pipeline.Workspace)/BuildArtifacts/sampleapp-*.tgz)
             echo "Chart package: $CHART_PACKAGE"
 
             # Login to ACR
