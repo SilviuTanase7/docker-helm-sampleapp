@@ -265,7 +265,7 @@ stages:
             echo "ls Pipeline.Workspace/BuildArtifacts"
             ls $(Pipeline.Workspace)/BuildArtifacts
 
-            CHART_PACKAGE=$(ls $(Pipeline.Workspace)/BuildArtifacts/sampleapp-0.1.$(Build.BuildId).tgz)
+            CHART_PACKAGE=$(ls $(Pipeline.Workspace)/BuildArtifacts/sampleApp-*.tgz)
             echo "Chart package: $CHART_PACKAGE"
 
             # Login to ACR
