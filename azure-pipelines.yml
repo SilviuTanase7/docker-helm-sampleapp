@@ -183,14 +183,25 @@ stages:
 # -----------------------------
 - stage: ArtifactManagement
   displayName: "Artifact Management"
-  dependsOn: Build
+  dependsOn: 
+    - Build
+    - IaCScan
   jobs:
-  - job: HelmChartPackage
-    displayName: "Package & Publish Helm Chart"
+  - job: BundleArtifacts
+    displayName: "Bundle & Publish All Artifacts"
     pool:
       vmImage: 'ubuntu-latest'
     steps:
     - checkout: self
+
+    # Download artifacts from earlier stages
+    - download: current
+      artifact: CheckovHelmReport
+      displayName: "Download Checkov Report"
+
+    - download: current
+      artifact: CVSSScanReport
+      displayName: "Download CVSS Report"
 
     # -----------------------------
     # Package Helm Chart
@@ -209,66 +220,46 @@ stages:
           --version $VERSION \
           --app-version $(Build.BuildId) \
           --destination $(Build.ArtifactStagingDirectory)
-      displayName: "Package Helm Chart"
+
+        # Copy Checkov + CVSS reports into staging dir
+        cp $(Pipeline.Workspace)/CheckovHelmReport/checkov-helm-report.json $(Build.ArtifactStagingDirectory) || true
+        cp $(Pipeline.Workspace)/CVSSScanReport/image-vulns.json $(Build.ArtifactStagingDirectory) || true
+      displayName: "Package Helm Chart and Collect Reports"
 
     # -----------------------------
-    # Publish Helm chart as pipeline artifact
+    # Publish everything as a single artifact
     # -----------------------------
     - publish: $(Build.ArtifactStagingDirectory)
-      artifact: HelmChart
-      displayName: "Publish Helm Chart Artifact"
-
-    # -----------------------------
-    # Publish additional reports
-    # -----------------------------
-    - publish: checkov-helm-report.json
-      artifact: CheckovHelmReport
-      condition: always()
-
-    - publish: image-vulns.json
-      artifact: CVSSScanReport
-      condition: always()
+      artifact: BuildArtifacts
+      displayName: "Publish Unified Build Artifacts"
 
   # -----------------------------
   # Separate Job: Push Helm Chart
   # -----------------------------
-  - job: HelmChartPackage
-    displayName: "Package & Publish Helm Chart"
+  - job: PushHelmChart
+    displayName: "Push Helm Chart to ACR"
+    dependsOn: BundleArtifacts
     pool:
       vmImage: 'ubuntu-latest'
     steps:
-    - checkout: self
+      - download: current
+        artifact: BuildArtifacts
 
-    # Download earlier scan artifacts if needed
-    - download: current
-      artifact: CheckovHelmReport
-      displayName: "Download Checkov Report"
+      - task: AzureCLI@2
+        displayName: "Push Helm Chart to ACR"
+        inputs:
+          azureSubscription: AzureRM-Home
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            CHART_PACKAGE=$(ls $(Pipeline.Workspace)/BuildArtifacts/sampleapp-*.tgz)
+            echo "Chart package: $CHART_PACKAGE"
 
-    - download: current
-      artifact: CVSSScanReport
-      displayName: "Download CVSS Report"
+            # Login to ACR
+            az acr login --name dockerhelm
 
-    # -----------------------------
-    # Package Helm Chart
-    # -----------------------------
-    - script: |
-        CHART_PATH=./charts/sampleapp
-        VERSION="0.1.$(Build.BuildId)"
-        echo "Updating Chart.yaml with version $VERSION"
-
-        sed -i "s/^version:.*/version: $VERSION/" $CHART_PATH/Chart.yaml
-        sed -i "s/^appVersion:.*/appVersion: \"$(Build.BuildId)\"/" $CHART_PATH/Chart.yaml
-
-        helm package $CHART_PATH \
-          --version $VERSION \
-          --app-version $(Build.BuildId) \
-          --destination $(Build.ArtifactStagingDirectory)
-      displayName: "Package Helm Chart"
-
-    # Publish Helm chart
-    - publish: $(Build.ArtifactStagingDirectory)
-      artifact: HelmChart
-      displayName: "Publish Helm Chart Artifact"
+            # Push chart to Helm OCI repo
+            helm push $CHART_PACKAGE oci://dockerhelm.azurecr.io/helm
 
 # -----------------------------
 # Stage 6: Helm Deployment
