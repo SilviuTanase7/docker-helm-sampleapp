@@ -221,6 +221,12 @@ stages:
           --app-version $(Build.BuildId) \
           --destination $(Build.ArtifactStagingDirectory)
 
+        echo "ls Build.ArtifactStagingDirectory $(Build.ArtifactStagingDirectory)"
+        ls $(Build.ArtifactStagingDirectory)
+        echo "ls Pipeline.Workspace $(Pipeline.Workspace)"
+        ls $(Pipeline.Workspace)
+
+
         # Copy Checkov + CVSS reports into staging dir
         cp $(Pipeline.Workspace)/CheckovHelmReport/checkov-helm-report.json $(Build.ArtifactStagingDirectory) || true
         cp $(Pipeline.Workspace)/CVSSScanReport/image-vulns.json $(Build.ArtifactStagingDirectory) || true
@@ -252,6 +258,13 @@ stages:
           scriptType: bash
           scriptLocation: inlineScript
           inlineScript: |
+            echo "ls Build.ArtifactStagingDirectory $(Build.ArtifactStagingDirectory)"
+            ls $(Build.ArtifactStagingDirectory)
+            echo "ls Pipeline.Workspace $(Pipeline.Workspace)"
+            ls $(Pipeline.Workspace)
+            echo "ls Pipeline.Workspace/BuildArtifacts"
+            ls $(Pipeline.Workspace)/BuildArtifacts
+
             CHART_PACKAGE=$(ls $(Pipeline.Workspace)/BuildArtifacts/sampleapp-*.tgz)
             echo "Chart package: $CHART_PACKAGE"
 
