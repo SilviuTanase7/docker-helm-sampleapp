@@ -315,8 +315,7 @@ stages:
                 --namespace mynamespace \
                 --version 0.1.$(Build.BuildId) \
                 --set image.repository=dockerhelm.azurecr.io/sampleapp \
-                --set image.tag=$(Build.BuildId) \
-                --rollback-on-failure --wait --timeout 10m
+                --set image.tag=$(Build.BuildId)
 
               echo "Checking Pod status after deployment..."
               kubectl get pods -n mynamespace
