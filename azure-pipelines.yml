@@ -189,7 +189,6 @@ stages:
     #     tar -xvf cosign.tar.gz
     #     sudo mv cosign /usr/local/bin/cosign
     #   displayName: Install Cosign
-
     - script: |
         echo "Fetching OIDC token..."
         oidcToken=$(curl -s --header "Metadata: true" \
@@ -211,7 +210,7 @@ stages:
         cosign sign \
           --keyless \
           --identity-token $(OIDC_TOKEN) \
-          $(image)
+          dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
       displayName: Sign container with Cosign
 
     # Generate provenance / attestation
