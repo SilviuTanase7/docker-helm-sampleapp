@@ -207,7 +207,7 @@ stages:
     #   displayName: 'Sign Docker Image'
     - script: |
         IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
-
+        az acr login --name dockerhelm
         echo "Signing $IMAGE_NAME with OIDC token"
         COSIGN_EXPERIMENTAL=1 cosign sign \
           --identity-token "$OIDC_TOKEN" \
