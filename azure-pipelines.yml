@@ -180,13 +180,13 @@ stages:
 
     # Install Cosign
     - script: |
-        curl -LO https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-arm64
-        chmod +x cosign-linux-arm64
-        sudo mv cosign-linux-arm64 /usr/local/bin/cosign
+        curl -LO https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
+        chmod +x cosign-linux-aamd64
+        sudo mv cosign-linux-amd64 /usr/local/bin/cosign
         cosign version
       displayName: 'Install Cosign'
     # - script: |
-    #     curl -sSL -o cosign.tar.gz https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-arm64.tar.gz
+    #     curl -sSL -o cosign.tar.gz https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64.tar.gz
     #     tar -xvf cosign.tar.gz
     #     sudo mv cosign /usr/local/bin/cosign
     #   displayName: Install Cosign
@@ -210,13 +210,12 @@ stages:
 
         echo "Signing $IMAGE_NAME with OIDC token"
         COSIGN_EXPERIMENTAL=1 cosign sign \
-          --keyless \
           --identity-token "$OIDC_TOKEN" \
           "$IMAGE_NAME"
       env:
         OIDC_TOKEN: $(OIDC_TOKEN)   # pass pipeline variable as env var
       displayName: Sign container with Cosign
-      
+
     # # Keyless signing using OIDC + Azure AD
     # - script: |
     #     cosign sign \
