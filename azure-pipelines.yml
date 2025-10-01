@@ -178,58 +178,37 @@ stages:
       displayName: 'Publish vulnerability scan report'
       condition: always()
 
-    # Install Cosign
-    - script: |
-        curl -LO https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
-        chmod +x cosign-linux-amd64
-        sudo mv cosign-linux-amd64 /usr/local/bin/cosign
-        cosign version
-      displayName: 'Install Cosign'
-    # - script: |
-    #     curl -sSL -o cosign.tar.gz https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64.tar.gz
-    #     tar -xvf cosign.tar.gz
-    #     sudo mv cosign /usr/local/bin/cosign
-    #   displayName: Install Cosign
-    - script: |
-        echo "Fetching OIDC token..."
-        oidcToken=$(curl -s --header "Metadata: true" \
-          "http://127.0.0.1:4178/_apis/distributedtask/pipelines/oidc/token?api-version=7.1-preview.1" \
-          | jq -r '.oidcToken')
+    # 3. Fetch Cosign key from Key Vault
+    - task: AzureKeyVault@2
+      inputs:
+        azureSubscription: 'CosignConnection'
+        KeyVaultName: 'DockerHelm'
+        SecretsFilter: 'cosign-private-key'
+        RunAsPreJob: false
 
-        echo "##vso[task.setvariable variable=OIDC_TOKEN;isOutput=true]$oidcToken"
-      displayName: Fetch OIDC token
-
+    # 4. Sign image with Cosign
     - script: |
         IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
         az acr login --name dockerhelm
+        echo "Signing image $(IMAGE_NAME)"
 
-        # write OIDC token to a temporary file
-        TOKEN_FILE=$(Pipeline.Workspace)/oidc_token.txt
-        echo "$OIDC_TOKEN" > "$TOKEN_FILE"
+        # Write Key Vault secret to a file
+        echo "$COSIGN_KEY" > $(Pipeline.Workspace)/cosign.key
 
-        echo "Signing $IMAGE_NAME with OIDC token"
-        COSIGN_EXPERIMENTAL=1 cosign sign \
-          --identity-token "$TOKEN_FILE" \
-          "$IMAGE_NAME"
+        # (Optional) protect the file
+        chmod 600 $(Pipeline.Workspace)/cosign.key
+
+        # Sign the image with Cosign
+        cosign sign --key $(Pipeline.Workspace)/cosign.key "$(IMAGE_NAME)"
       env:
-        OIDC_TOKEN: $(OIDC_TOKEN)
-      displayName: Sign container with Cosign
+        COSIGN_KEY: $(cosign-private-key)  # secret pulled from Key Vault
+      displayName: 'Sign Docker Image with Cosign'
 
-
-    # Generate provenance / attestation
+    # 5. (Optional) Verify signature
     - script: |
-        IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
-        cosign attest --key $(COSIGN_KEY_PATH) \
-          --predicate $(Pipeline.Workspace)/CVSSScanReport/image-vulns.json \
-          $IMAGE_NAME
-      displayName: 'Generate Provenance Attestation'
-
-    - script: |
-        cosign verify \
-          --keyless \
-          --certificate-identity "https://vstoken.dev.azure.com/tanasefamily96" \
-          dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
-      displayName: Verify image signature
+        echo "Verifying signature for $(IMAGE_NAME)"
+        cosign verify --key cosign.pub "$(IMAGE_NAME)"
+      displayName: 'Verify Docker Image Signature'
 
 # -----------------------------
 # Stage 5: Artifact Management
