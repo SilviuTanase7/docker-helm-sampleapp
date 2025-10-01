@@ -199,30 +199,22 @@ stages:
         echo "##vso[task.setvariable variable=OIDC_TOKEN;isOutput=true]$oidcToken"
       displayName: Fetch OIDC token
 
-
-    # # Sign the Docker image
-    # - script: |
-    #     IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
-    #     cosign sign --key $(COSIGN_KEY_PATH) $IMAGE_NAME
-    #   displayName: 'Sign Docker Image'
     - script: |
         IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
         az acr login --name dockerhelm
+
+        # write OIDC token to a temporary file
+        TOKEN_FILE=$(Pipeline.Workspace)/oidc_token.txt
+        echo "$OIDC_TOKEN" > "$TOKEN_FILE"
+
         echo "Signing $IMAGE_NAME with OIDC token"
         COSIGN_EXPERIMENTAL=1 cosign sign \
-          --identity-token "$OIDC_TOKEN" \
+          --identity-token "$TOKEN_FILE" \
           "$IMAGE_NAME"
       env:
-        OIDC_TOKEN: $(OIDC_TOKEN)   # pass pipeline variable as env var
+        OIDC_TOKEN: $(OIDC_TOKEN)
       displayName: Sign container with Cosign
 
-    # # Keyless signing using OIDC + Azure AD
-    # - script: |
-    #     cosign sign \
-    #       --keyless \
-    #       --identity-token $(OIDC_TOKEN) \
-    #       dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
-    #   displayName: Sign container with Cosign
 
     # Generate provenance / attestation
     - script: |
