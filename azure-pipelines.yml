@@ -32,6 +32,12 @@ stages:
     - script: dotnet restore
       displayName: 'Restore NuGet packages'
 
+    - script: |
+        echo "projectID:"
+        printenv | grep PROJECT
+        printenv | grep SYSTEM
+
+
     # Check formatting (whitespace/indentation)
     - script: dotnet format whitespace --verify-no-changes
       displayName: 'Check code formatting'
@@ -178,6 +184,35 @@ stages:
       displayName: 'Publish vulnerability scan report'
       condition: always()
 
+    # Install Cosign
+    - script: |
+        curl -LO https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-arm64
+        chmod +x cosign-linux-arm64
+        sudo mv cosign-linux-arm64 /usr/local/bin/cosign
+      displayName: 'Install Cosign'
+
+    # # Sign the Docker image
+    # - script: |
+    #     IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
+    #     cosign sign --key $(COSIGN_KEY_PATH) $IMAGE_NAME
+    #   displayName: 'Sign Docker Image'
+
+    # Keyless signing using OIDC + Azure AD
+    - script: |
+        cosign sign \
+          --keyless \
+          --identity-token $(System.AccessToken) \
+          $(image)
+      displayName: Sign container with Cosign
+
+    # Generate provenance / attestation
+    - script: |
+        IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
+        cosign attest --key $(COSIGN_KEY_PATH) \
+          --predicate $(Pipeline.Workspace)/CVSSScanReport/image-vulns.json \
+          $IMAGE_NAME
+      displayName: 'Generate Provenance Attestation'
+
 # -----------------------------
 # Stage 5: Artifact Management
 # -----------------------------
@@ -223,12 +258,6 @@ stages:
           --app-version $(Build.BuildId) \
           --destination $(Build.ArtifactStagingDirectory)
 
-        echo "ls Build.ArtifactStagingDirectory $(Build.ArtifactStagingDirectory)"
-        ls $(Build.ArtifactStagingDirectory)
-        echo "ls Pipeline.Workspace $(Pipeline.Workspace)"
-        ls $(Pipeline.Workspace)
-
-
         # Copy Checkov + CVSS reports into staging dir
         cp $(Pipeline.Workspace)/CheckovHelmReport/checkov-helm-report.json $(Build.ArtifactStagingDirectory) || true
         cp $(Pipeline.Workspace)/CVSSScanReport/image-vulns.json $(Build.ArtifactStagingDirectory) || true
@@ -260,13 +289,6 @@ stages:
           scriptType: bash
           scriptLocation: inlineScript
           inlineScript: |
-            echo "ls Build.ArtifactStagingDirectory $(Build.ArtifactStagingDirectory)"
-            ls $(Build.ArtifactStagingDirectory)
-            echo "ls Pipeline.Workspace $(Pipeline.Workspace)"
-            ls $(Pipeline.Workspace)
-            echo "ls Pipeline.Workspace/BuildArtifacts"
-            ls $(Pipeline.Workspace)/BuildArtifacts
-
             CHART_PACKAGE=$(ls $(Pipeline.Workspace)/BuildArtifacts/sampleapp-*.tgz)
             echo "Chart package: $CHART_PACKAGE"
 
