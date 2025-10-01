@@ -32,12 +32,6 @@ stages:
     - script: dotnet restore
       displayName: 'Restore NuGet packages'
 
-    - script: |
-        echo "projectID:"
-        printenv | grep PROJECT
-        printenv | grep SYSTEM
-
-
     # Check formatting (whitespace/indentation)
     - script: dotnet format whitespace --verify-no-changes
       displayName: 'Check code formatting'
@@ -191,6 +185,16 @@ stages:
         sudo mv cosign-linux-arm64 /usr/local/bin/cosign
       displayName: 'Install Cosign'
 
+    - script: |
+        echo "Fetching OIDC token..."
+        oidcToken=$(curl -s --header "Metadata: true" \
+          "http://127.0.0.1:4178/_apis/distributedtask/pipelines/oidc/token?api-version=7.1-preview.1" \
+          | jq -r '.oidcToken')
+
+        echo "##vso[task.setvariable variable=OIDC_TOKEN;isOutput=true]$oidcToken"
+      displayName: Fetch OIDC token
+
+
     # # Sign the Docker image
     # - script: |
     #     IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
@@ -201,7 +205,7 @@ stages:
     - script: |
         cosign sign \
           --keyless \
-          --identity-token $(System.AccessToken) \
+          --identity-token $(OIDC_TOKEN) \
           $(image)
       displayName: Sign container with Cosign
 
@@ -212,6 +216,13 @@ stages:
           --predicate $(Pipeline.Workspace)/CVSSScanReport/image-vulns.json \
           $IMAGE_NAME
       displayName: 'Generate Provenance Attestation'
+
+    - script: |
+        cosign verify \
+          --keyless \
+          --certificate-identity "https://vstoken.dev.azure.com/tanasefamily96" \
+          dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
+      displayName: Verify image signature
 
 # -----------------------------
 # Stage 5: Artifact Management
