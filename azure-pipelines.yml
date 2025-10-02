@@ -193,11 +193,17 @@ stages:
         # Write Key Vault secret to a file
         echo "$COSIGN_KEY" > $(Pipeline.Workspace)/cosign.key
 
+        DIGEST=$(az acr repository show-manifests \
+          --name dockerhelm \
+          --repository sampleapp \
+          --query "[?tags[?@=='$(Build.BuildId)']].digest" -o tsv)
+        echo "Signing image $IMAGE_NAME@$DIGEST"
+
         # (Optional) protect the file
         chmod 600 $(Pipeline.Workspace)/cosign.key
 
         # Sign the image with Cosign
-        cosign sign --key $(Pipeline.Workspace)/cosign.key "$(IMAGE_NAME)"
+        cosign sign --key $(Pipeline.Workspace)/cosign.key "$(IMAGE_NAME)@$DIGEST"
       env:
         COSIGN_KEY: $(cosign-private-key)  # secret pulled from Key Vault
       displayName: 'Sign Docker Image with Cosign'
