@@ -94,7 +94,6 @@ stages:
     # Publish reports
     - publish: checkov-helm-report.json
       artifact: CheckovHelmReport
-
 # -----------------------------
 # Stage 4: Build & Docker
 # -----------------------------
@@ -175,7 +174,6 @@ stages:
       artifact: CVSSScanReport
       displayName: 'Publish vulnerability scan report'
       condition: always()
-
 # -----------------------------
 # Stage 5: Artifact Management
 # -----------------------------
@@ -260,7 +258,9 @@ stages:
 
             # Push chart to Helm OCI repo
             helm push $CHART_PACKAGE oci://dockerhelm.azurecr.io/helm
-
+# -----------------------------
+# Stage 6: Deployment
+# -----------------------------
 - stage: Deploy
   displayName: 'Deploy to Production'
   dependsOn:
