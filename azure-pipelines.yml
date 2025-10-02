@@ -13,6 +13,7 @@ variables:
   PACKAGE_NAME: 'SampleApp'
   PACKAGE_VERSION: '$(Build.BuildNumber)'
   SBOM_NS_BASE: 'http://sbom.local'
+  IMAGE_NAME: 'dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)'
 
 stages:
 # -----------------------------
@@ -158,8 +159,6 @@ stages:
 
     # Add this step after your Docker build & push
     - script: |
-        IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
-
         # Scan Docker image
         grype $IMAGE_NAME -o json > image-vulns.json
 
@@ -188,7 +187,6 @@ stages:
 
     # 4. Sign image with Cosign
     - script: |
-        IMAGE_NAME=dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)
         az acr login --name dockerhelm
         echo "Signing image $(IMAGE_NAME)"
 
