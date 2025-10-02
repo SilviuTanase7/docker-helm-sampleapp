@@ -13,10 +13,6 @@ variables:
   PACKAGE_NAME: 'SampleApp'
   PACKAGE_VERSION: '$(Build.BuildNumber)'
   SBOM_NS_BASE: 'http://sbom.local'
-  IMAGE_NAME: 'dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)'
-  # IMAGE_PATH: 'dockerhelm.azurecr.io/sampleapp'
-  REGISTRY: dockerhelm.azurecr.io
-  REPO: sampleapp
 
 stages:
 # -----------------------------
@@ -179,44 +175,6 @@ stages:
       artifact: CVSSScanReport
       displayName: 'Publish vulnerability scan report'
       condition: always()
-
-    # 3. Fetch Cosign key from Key Vault
-    - task: AzureKeyVault@2
-      inputs:
-        azureSubscription: 'CosignConnection'
-        KeyVaultName: 'DockerHelm'
-        SecretsFilter: 'cosign-private-key'
-        RunAsPreJob: false
-
-    # 4. Sign image with Cosign
-    - script: |
-        IMAGE_PATH="$(REGISTRY)/$(REPO)"
-        az acr login --name dockerhelm
-        echo "Signing image $(IMAGE_PATH)"
-
-        # Write Key Vault secret to a file
-        echo "$COSIGN_KEY" > $(Pipeline.Workspace)/cosign.key
-
-        DIGEST=$(az acr repository show-manifests \
-          --name dockerhelm \
-          --repository $(REPO) \
-          --query "[?tags[?@=='$(Build.BuildId)']].digest" -o tsv)
-        echo "Signing image $IMAGE_PATH@$DIGEST"
-
-        # (Optional) protect the file
-        chmod 600 $(Pipeline.Workspace)/cosign.key
-
-        # Sign the image with Cosign
-        cosign sign --key $(Pipeline.Workspace)/cosign.key "$(IMAGE_PATH)@$DIGEST"
-      env:
-        COSIGN_KEY: $(cosign-private-key)  # secret pulled from Key Vault
-      displayName: 'Sign Docker Image with Cosign'
-
-    # 5. (Optional) Verify signature
-    - script: |
-        echo "Verifying signature for $(IMAGE_NAME)"
-        cosign verify --key cosign.pub "$(IMAGE_NAME)"
-      displayName: 'Verify Docker Image Signature'
 
 # -----------------------------
 # Stage 5: Artifact Management
