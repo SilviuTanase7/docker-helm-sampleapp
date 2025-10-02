@@ -14,7 +14,9 @@ variables:
   PACKAGE_VERSION: '$(Build.BuildNumber)'
   SBOM_NS_BASE: 'http://sbom.local'
   IMAGE_NAME: 'dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)'
-  IMAGE_PATH: 'dockerhelm.azurecr.io/sampleapp'
+  # IMAGE_PATH: 'dockerhelm.azurecr.io/sampleapp'
+  REGISTRY: dockerhelm.azurecr.io
+  REPO: sampleapp
 
 stages:
 # -----------------------------
@@ -188,6 +190,7 @@ stages:
 
     # 4. Sign image with Cosign
     - script: |
+        IMAGE_PATH="$(REGISTRY)/$(REPO)"
         az acr login --name dockerhelm
         echo "Signing image $(IMAGE_PATH)"
 
@@ -196,7 +199,7 @@ stages:
 
         DIGEST=$(az acr repository show-manifests \
           --name dockerhelm \
-          --repository sampleapp \
+          --repository $(REPO) \
           --query "[?tags[?@=='$(Build.BuildId)']].digest" -o tsv)
         echo "Signing image $IMAGE_PATH@$DIGEST"
 
