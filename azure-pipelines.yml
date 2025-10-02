@@ -14,7 +14,7 @@ variables:
   PACKAGE_VERSION: '$(Build.BuildNumber)'
   SBOM_NS_BASE: 'http://sbom.local'
   IMAGE_NAME: 'dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)'
-  IMAGE_PATH: 'Dockerhelm.azurecr.io/sampleapp'
+  IMAGE_PATH: 'dockerhelm.azurecr.io/sampleapp'
 
 stages:
 # -----------------------------
