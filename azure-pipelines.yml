@@ -8,11 +8,14 @@ variables:
   dockerRegistryServiceConnection: DockerHelm
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
-  agentName: 'homeAgent'
   BUILD_CONFIGURATION: 'Release'
   PACKAGE_NAME: 'SampleApp'
   PACKAGE_VERSION: '$(Build.BuildNumber)'
-  SBOM_NS_BASE: 'http://sbom.local'
+
+pool:
+  name: Default
+  demands: 
+  - agent.name -equals homeAgent
 
 stages:
 # -----------------------------
@@ -23,10 +26,6 @@ stages:
   jobs:
   - job: LintAndFormat
     displayName: 'Run Linters and Formatters'
-    pool:
-      name: Default
-      demands:
-        - agent.name -equals $(agentName)
     steps:
     # Restore dependencies
     - script: dotnet restore
@@ -49,8 +48,6 @@ stages:
   jobs:
   - job: UnitTests
     displayName: 'Unit Tests'
-    pool:
-      name: Default
     steps:
       # Restore packages
       - script: dotnet restore SampleApp.sln
@@ -79,8 +76,6 @@ stages:
   displayName: "Helm IaC Scan"
   jobs:
   - job: HelmScanJob
-    pool:
-      vmImage: 'ubuntu-latest'
     steps:
     - checkout: self
 
@@ -105,7 +100,7 @@ stages:
     pool:
       name: Default
       demands: 
-        - agent.name -equals $(agentName)
+        - agent.name -equals homeAgent
         - java
     steps:
     # SonarQube preparation
@@ -185,8 +180,6 @@ stages:
   jobs:
   - job: BundleArtifacts
     displayName: "Bundle & Publish All Artifacts"
-    pool:
-      vmImage: 'ubuntu-latest'
     steps:
     - checkout: self
 
@@ -237,8 +230,6 @@ stages:
   - job: PushHelmChart
     displayName: "Push Helm Chart to ACR"
     dependsOn: BundleArtifacts
-    pool:
-      vmImage: 'ubuntu-latest'
     steps:
       - download: current
         artifact: BuildArtifacts
@@ -270,8 +261,6 @@ stages:
   - deployment: HelmDeploy
     displayName: 'Helm Deploy'
     environment: 'production'
-    pool:
-      name: Default
     strategy:
       runOnce:
         deploy:
