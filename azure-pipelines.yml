@@ -14,6 +14,7 @@ variables:
   PACKAGE_VERSION: '$(Build.BuildNumber)'
   SBOM_NS_BASE: 'http://sbom.local'
   IMAGE_NAME: 'dockerhelm.azurecr.io/sampleapp:$(Build.BuildId)'
+  IMAGE_PATH: 'Dockerhelm.azurecr.io/sampleapp'
 
 stages:
 # -----------------------------
@@ -188,7 +189,7 @@ stages:
     # 4. Sign image with Cosign
     - script: |
         az acr login --name dockerhelm
-        echo "Signing image $(IMAGE_NAME)"
+        echo "Signing image $(IMAGE_PATH)"
 
         # Write Key Vault secret to a file
         echo "$COSIGN_KEY" > $(Pipeline.Workspace)/cosign.key
@@ -197,13 +198,13 @@ stages:
           --name dockerhelm \
           --repository sampleapp \
           --query "[?tags[?@=='$(Build.BuildId)']].digest" -o tsv)
-        echo "Signing image $IMAGE_NAME@$DIGEST"
+        echo "Signing image $IMAGE_PATH@$DIGEST"
 
         # (Optional) protect the file
         chmod 600 $(Pipeline.Workspace)/cosign.key
 
         # Sign the image with Cosign
-        cosign sign --key $(Pipeline.Workspace)/cosign.key "$(IMAGE_NAME)@$DIGEST"
+        cosign sign --key $(Pipeline.Workspace)/cosign.key "$(IMAGE_PATH)@$DIGEST"
       env:
         COSIGN_KEY: $(cosign-private-key)  # secret pulled from Key Vault
       displayName: 'Sign Docker Image with Cosign'
